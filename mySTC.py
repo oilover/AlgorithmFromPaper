@@ -6,10 +6,11 @@ import time
 import os.path
 import pickle
 import sys
-
+# from STC import getDataGraph
 ''' 
     Use Mininum Spanning Tree..
 '''   
+# -----------------------------------------
 def CN(G,u,v):
     return len(list(nx.common_neighbors(G, u, v)))  
 def AA(G,u,v):
@@ -20,12 +21,14 @@ def JA(G,u,v):
     union_size = len(set(G[u]) | set(G[v]))
     if union_size == 0: return 0
     return len(list(nx.common_neighbors(G, u, v))) / union_size 
-def AllToSet(teams):
-    for K in teams: teams[K] = set(teams[K])
-def _info(teams):
+# -----------------------------------------------
+def Info(teams):
     v = teams.values()
     v = [len(x) for x in v]
-    print max(v),min(v),sum(v)*1.0/len(v)
+    print '[info] len:',len(teams),' ', max(v),min(v),sum(v)*1.0/len(v), ' sum:',sum(v)
+def AllToSet(teams):
+    for K in teams: teams[K] = set(teams[K])
+
 def get_open_set(G,v,w):
     open_set = set()
     s1, s2 = set(G[v]), set(G[w])
@@ -38,7 +41,10 @@ def contribution(G,u,v):
         if G.has_edge(u,v): return 0
     except Exception as e:
         return 0
-    return CN(G,u,v) - len(get_open_set(G,u,v))
+    ans = CN(G,u,v) - len(get_open_set(G,u,v))
+    ans2 = 3*CN(G,u,v) - G.degree(u) - G.degree(v)
+    assert ans == ans2
+    return ans
 
 def MergeTeams(teams, overlap=True):
     AllToSet(teams)
@@ -68,30 +74,32 @@ def MergeTeams(teams, overlap=True):
         new_teams[ID] = team
     return new_teams
 
+# def getDG(sets, G):
+#     Gteams = {}
+#     for k in sets.keys():
+#         g = G.subgraph(sets[k])
+#         Gteams[k] = copy.deepcopy(g)
+#     return Gteams
 def getDataGraph(sets, G):
-    AllToSet(sets)
-    
-    new_ID = max(sets.keys())
     Gteams = {}
     for k in sets.keys():
         g = G.subgraph(sets[k])
         if g.number_of_nodes() >= 2:
-            if nx.is_connected(g):
+            if nx.is_connected(g) :
                  Gteams[k] = copy.deepcopy(g)
                  sets[k] = copy.deepcopy(g.nodes())
             else:
                 flag = False
-                del sets[k]
                 for Gc in nx.connected_component_subgraphs(g):
                     if Gc.number_of_nodes() >= 2:
                         flag = True
-                        new_ID += 1
-                        Gteams[new_ID] = copy.deepcopy(Gc)
-                        sets[new_ID] = copy.deepcopy(Gc.nodes())
-                # if not flag:
-                #     del sets[k]
+                        Gteams[k] = copy.deepcopy(Gc)
+                        sets[k] = copy.deepcopy(Gc.nodes())
+                if not flag:
+                    del sets[k]
         else:
-            del sets[k]    
+            del sets[k]
+    
     return sets, Gteams
 
 
@@ -147,7 +155,13 @@ def compute(G):
             if contribution(new_G,u,v)>0:
                 new_G.add_edge(u,v)
                 
-
+def test_solution(sets, G, new_G):
+    for g in sets.values():
+        if nx.is_connected(G.subgraph(g)) and \
+        not nx.is_connected(new_G.subgraph(g)) and len(g)>=2:
+            print 'Disconnect:',g, G.subgraph(g).edges(), new_G.subgraph(g).edges()
+            return False
+    return True
 if __name__ == '__main__':
     global new_G
     new_G = nx.Graph()
@@ -156,18 +170,19 @@ if __name__ == '__main__':
     except Exception as e:
         name = 'BM_tags'
         
-    if not name:
-        name = 'BM_tags' #'youtube_10000' #'BM_tags' #'lastFM_tags'    
+    #'youtube_10000' #'BM_tags' #'lastFM_tags'    
     G, init_sets = pickle.load(open(os.path.join('UnderlyingNetwork', name +'.pkl'),'rb'))
     print 'Data: ', name
     print 'number of nodes and edges in the graph:'
     print G.number_of_nodes(), G.number_of_edges()
-    AllToSet(init_sets)
+    # AllToSet(init_sets)
 
     sets = init_sets
     sets, Gteams = getDataGraph(sets, G)
-    sets = MergeTeams(sets, overlap=True) # allow overlap
-    sets, Gteams = getDataGraph(sets, G)
+    init_sets = sets
+    print 'Initial number of sets:', len(sets)
+    # sets = MergeTeams(sets, overlap=True) # allow overlap
+    # sets, Gteams = getDataGraph(sets, G)
     print 'number of sets:', len(sets)
     
     all_opens = getAllOpen(G)
@@ -176,7 +191,7 @@ if __name__ == '__main__':
         
     
     tic = time.time()
-    print 'Begin Greedy...'
+    print 'Begin mySTC...'
     new_G = nx.Graph()
     for g in Gteams.values():
         compute(g)
@@ -190,8 +205,12 @@ if __name__ == '__main__':
     Strong = set(new_G.edges())
     Weak = set([(i,j) if i < j else (j,i) for (i,j) in G.edges()])-Strong
     
-    print 'number of strong and weak edges:'
-    print len(Strong), len(Weak)
+    print 'number of strong and weak edges:', len(Strong), len(Weak)
     print 'Strong edge ratio (s in paper): ', 1.0*len(Strong) / (len(Strong) + len(Weak))
-    pickle.dump((Gteams, sets, Strong, Weak), open('out/' + name + '-' + \
-        time.ctime(time.time()).replace(':','_') + '.p2', "wb"))
+    fn = name + '-' + \
+        time.ctime(time.time()).replace(':','_') + '.p2'
+    Info(init_sets)
+    if not test_solution(init_sets, G, new_G):
+        print 'Strong Edge !!! Failed !!!'
+    print 'Store file name:', fn
+    pickle.dump((Gteams, sets, Strong, Weak), open('out/' + fn, "wb"))
