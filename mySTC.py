@@ -34,9 +34,13 @@ def get_open_set(G,v,w):
     return open_set
 
 def contribution(G,u,v):
+    try:
+        if G.has_edge(u,v): return 0
+    except Exception as e:
+        return 0
     return CN(G,u,v) - len(get_open_set(G,u,v))
 
-def MergeTeams(teams):
+def MergeTeams(teams, overlap=True):
     AllToSet(teams)
     teams = sorted(teams.items(), key=lambda x:len(x[-1]), reverse=True)
     N = len(teams)
@@ -49,13 +53,14 @@ def MergeTeams(teams):
         for j in range(i+1,N):
             if merged[j]: continue 
             t2 = teams[j][-1]
-            tt = t1&t2
-            if len(tt)>0:
-                merged[j] = True
-                t1 |= t2
-            # if t2.issubset(t1): 
-            #     merged[j] = True
-            #     t1 |= t2
+            if overlap:
+                if t2.issubset(t1): 
+                    merged[j] = True
+            else:
+                tt = t1&t2
+                if len(tt)>0:
+                    merged[j] = True
+                    t1 |= t2
     new_teams = {}
     for i in range(N):
         if merged[i]: continue
@@ -137,17 +142,22 @@ def compute(G):
         ru,rv = find_root(u,disjoint_set),find_root(v,disjoint_set)
         if ru!=rv:
             disjoint_set[ru] = rv
-            new_G.add_edge(u,v)
-        else:
+            new_G.add_edge(u,v)            
+        else:            
             if contribution(new_G,u,v)>0:
                 new_G.add_edge(u,v)
+                
 
 if __name__ == '__main__':
     global new_G
     new_G = nx.Graph()
-    #
-    name = 'BM_tags' #'youtube_10000' #'BM_tags' #'lastFM_tags'                
-    name = sys.argv[1]
+    try:
+        name = sys.argv[1]
+    except Exception as e:
+        name = 'BM_tags'
+        
+    if not name:
+        name = 'BM_tags' #'youtube_10000' #'BM_tags' #'lastFM_tags'    
     G, init_sets = pickle.load(open(os.path.join('UnderlyingNetwork', name +'.pkl'),'rb'))
     print 'Data: ', name
     print 'number of nodes and edges in the graph:'
@@ -156,7 +166,7 @@ if __name__ == '__main__':
 
     sets = init_sets
     sets, Gteams = getDataGraph(sets, G)
-    sets = MergeTeams(sets)
+    sets = MergeTeams(sets, overlap=True) # allow overlap
     sets, Gteams = getDataGraph(sets, G)
     print 'number of sets:', len(sets)
     
@@ -183,5 +193,5 @@ if __name__ == '__main__':
     print 'number of strong and weak edges:'
     print len(Strong), len(Weak)
     print 'Strong edge ratio (s in paper): ', 1.0*len(Strong) / (len(Strong) + len(Weak))
-    pickle.dump((Gteams, sets, Strong, Weak), open('out/' + name + ' ' + \
+    pickle.dump((Gteams, sets, Strong, Weak), open('out/' + name + '-' + \
         time.ctime(time.time()).replace(':','_') + '.p2', "wb"))
