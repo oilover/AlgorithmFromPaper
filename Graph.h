@@ -3,46 +3,27 @@
 #define GRAPH_H
 #include <bits/stdc++.h>
 using namespace std;
-#define prt(k) cout<<#k" = "<<k<<endl
+#define prt(k) cerr<<#k" = "<<k<<endl
 typedef long long LL;
-void read(int &re) { scanf("%d", &re); }
+//void Read(int &re) { scanf("%d", &re); }
 const int maxTruss = 2018;
 typedef pair<int,int> PII;
 typedef PII PAIR;
 #define Pair PAIR
+#define PP PII
 typedef int vertex_t;
 typedef set<vertex_t> neighbor_set_t;
-template <class T>
-inline Pair MP(int u,int v) {
+
+inline Pair MP(int u,int v) { // make_pair
     if (u>v) swap(u,v);
     return Pair(u,v);
 }
-set<T> set_intersect(set<T> a, set<T> b)
-{
-    set<T> si;
-    set_intersection(a.begin(),a.end(), b.begin(),b.end(), inserter(si));
-    return si;
+inline void Prt(PII p) {
+    fprintf(stderr,"(%d, %d)    ",p.first,p.second);
 }
-neighbor_set_t intersect( const neighbor_set_t& set1, const neighbor_set_t& set2 ) {
-    neighbor_set_t::const_iterator it1 = set1.begin();
-    neighbor_set_t::const_iterator it2 = set2.begin();
-
-    neighbor_set_t result = neighbor_set_t();
-    while( it1 != set1.end() && it2 != set2.end() ) {
-        vertex_t v1 = *it1;
-        vertex_t v2 = *it2;
-        if( v1 < v2 ) {
-            ++it1;
-        } else if( v1 > v2 ) {
-            ++it2;
-        } else {
-            result.insert( *it1 );
-            ++it1;
-            ++it2;
-        }
-    }
-    return result;
-}
+//template <class T>
+set<int> set_intersect(set<int> a, set<int> b);
+neighbor_set_t intersect( const neighbor_set_t& set1, const neighbor_set_t& set2 );
 struct Edge
 {
     int u,v,cn;
@@ -59,17 +40,20 @@ private:
     map<PII,int> trussness, support;
     set<PII> edge_set;
     set<PAIR> sup2edge[maxTruss+5];
+    map<PII,set<int> > cns;
   //  const static int SIZE = 100;
 public:
     Graph(int SIZE=100) {
         srand(time(NULL));
         nodes.clear(); N=M=0; adj_list.resize(SIZE);
-        for(auto u:adj_list)u.clear();
+        edge_set.clear();
+        for(set<int> &u:adj_list)u.clear();
     }
+    void readGraph(const char *filename);
     int number_of_nodes() {
         return nodes.size();
     }
-    int number_of_edges() {
+    int number_of_edges() const{
         return edge_set.size();
     }
     set<int> get_nodes()
@@ -80,10 +64,13 @@ public:
     {
         if (u>v) swap(u,v);
         int uu = max(u,v);
-        if (adj_list.size()<=uu) adj_list.resize(uu+1);
-        if (adj_list[u].count(v)) return;
-        M++;
-
+        if (adj_list.size()<=uu) adj_list.resize(uu+20);
+    //    if (adj_list[u].count(v)) return;
+        nodes.insert(u); nodes.insert(v);
+        if (edge_set.count(PP(u,v)) ) {
+            cerr<<"Multiple edge\n";  Prt(PP(u,v));
+            exit(0);
+        }
         edge_set.insert(PII(u,v));
         adj_list[u].insert(v);
         adj_list[v].insert(u);
@@ -96,8 +83,11 @@ public:
     int commonNeighbor(int u, int v);
     neighbor_set_t commonNeighborSet(PAIR);
     int commonNeighbor(PII pii);
-    void update(Pair p);
-    void TrussDecomposition();
+    void update(Pair,int);
+    int TrussDecomposition();
+    int degree(int);
+    void print_edges();
+    void writeTruss(const char *);
 };
 
 
