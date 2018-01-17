@@ -37,7 +37,7 @@ void get_first_lines()
 {
     double t0 = clock();
     FILE *fin = fopen("LBSN + keyword\\gowalla\\gowalla_spots_subset1.csv","r");//,stdin);
-    FILE *fout = fopen("LBSN + keyword\\gowalla\\gowalla_spots_cleaned_800000.csv","w");//,stdout);
+    FILE *fout = fopen("LBSN + keyword\\gowalla\\gowalla_spots_cleaned_800000_1.csv","w");//,stdout);
   //  prt(fin);prt(fout);
     fgets(line,800,fin);
     prt(line);
@@ -47,21 +47,24 @@ void get_first_lines()
         if (vs.size()<=1) continue;
         string id,lng,lat,cat;
         id = vs[0], lng = vs[2], lat = vs[3], cat = *vs.rbegin();
-        string pat = "'name': "
+        string pat = "'name': ";
         int pos = cat.find(pat);
         cat = cat.substr(pos+pat.size());
+        if ( i<15) {  prt(cat);         }
+        pos = cat.find("}");
+        if ( i<15) {  prt(cat);         }
+        cat = cat.substr(0,pos);
+        if (isalnum(cat[1])) cat = cat.substr(1,cat.size()-2);
+        else {
+
+            cat = cat.substr(2, cat.size()-4);
+        }
         auto it = vs.rbegin();
         it++;
-        string s = *it;
+        string s = *it; // get category id
         s.resize(s.size()-1);
-        vector<string> vs2 = my_split(cat,'\'');
-        assert(vs2.size()>=2);
-        it = vs2.rbegin();
-        it++;
-        cat = *it;
-        if ( i<15) {
-            prt(cat);
-        }
+
+        if ( i<15) {  prt(cat);         }
         string newline = id+","+lng+","+lat+","+cat+"\n";;
         fputs(newline.c_str(),fout);
     }
@@ -211,7 +214,7 @@ int main(int argc, char **argv)
 //        prt(s);
 //    }
 //    ss.str
-    process();
+    get_first_lines();//process();
     return 0;
 }
 // intersect(): 13 35  53s
